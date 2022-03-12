@@ -8,6 +8,7 @@ const ProgressBar = require("progress");
 
 const app = express();
 const router = express.Router();
+require("dotenv").config();
 
 app.use(cors());
 
@@ -33,6 +34,7 @@ const dowloadEachFolder = async (folder) => {
   const fullUrls = linkObj.fileNames.map((fileName) => ({
     link: `https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/61/MOD04_3K/2021/${linkObj.folderName}/${fileName}`,
     fileName,
+    folderName: folder.name,
   }));
 
   await downloadAllFiles(fullUrls);
@@ -57,8 +59,7 @@ const downloadEachFile = async (downloadItem, index) => {
   console.log("Downloading file ", index + 1);
   let { data, headers } = await axios.get(downloadItem.link, {
     headers: {
-      Authorization:
-        "Bearer dHJhbmd0cmFuLm15OTM6ZEhKaGJpNXRlWFJ5WVc1blFHMXZibUZ6YUM1bFpIVT06MTY0NzA4MDQ4MjphYjNlY2Q2MDIwOTZjMDY3MzhjOWI2NGY3MWRlYzUwZTlmMmFkZWY4",
+      Authorization: `Bearer ${process.env.TOKEN}`,
     },
     responseType: "stream",
   });
@@ -87,7 +88,15 @@ const downloadEachFile = async (downloadItem, index) => {
       }
     });
   });
-  data.pipe(fs.createWriteStream(`./data/${downloadItem.fileName}`));
+  const dir = `./data/${downloadItem.folderName}`;
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir);
+  }
+  data.pipe(
+    fs.createWriteStream(
+      `./data/${downloadItem.folderName}/${downloadItem.fileName}`
+    )
+  );
 };
 
 const downloadAllFiles = async (links) => {
