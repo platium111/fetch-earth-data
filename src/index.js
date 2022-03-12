@@ -4,9 +4,6 @@ const axios = require("axios");
 const fs = require("fs");
 const download = require("download");
 // const allLinkJson = require("../dist/allLink.json");
-const got = require("got");
-const EventEmitter = require("events");
-const eventEmitter = new EventEmitter();
 const ProgressBar = require("progress");
 
 const app = express();
@@ -32,7 +29,13 @@ const dowloadEachFolder = async (folder) => {
 
   fs.writeFileSync(`./dist/${folder.name}.json`, JSON.stringify(filesUrl.data));
   const transformFiles = filesUrl.data.map((item) => item.name);
-  return { folderName: folder.name, fileNames: transformFiles };
+  const linkObj = { folderName: folder.name, fileNames: transformFiles };
+  const fullUrls = linkObj.fileNames.map((fileName) => ({
+    link: `https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/61/MOD04_3K/2021/${linkObj.folderName}/${fileName}`,
+    fileName,
+  }));
+
+  await downloadAllFiles(fullUrls);
 };
 
 const processAllFolder = async (folders) => {
@@ -43,13 +46,15 @@ const processAllFolder = async (folders) => {
   const results = [];
   for (const [i, val] of folders.entries()) {
     console.log("Download folder ", i + 1);
-    if (i == 1) break;
+    // Skip tu folder 1 -> 11 thi i tu 0 -> 10
+    if (i >= 0 && i <= 10) continue;
     results.push(await dowloadEachFolder(val));
   }
   return results;
 };
 
-const downloadEachFile = async (downloadItem) => {
+const downloadEachFile = async (downloadItem, index) => {
+  console.log("Downloading file ", index + 1);
   let { data, headers } = await axios.get(downloadItem.link, {
     headers: {
       Authorization:
@@ -92,9 +97,7 @@ const downloadAllFiles = async (links) => {
   }
   const results = [];
   for (const [i, val] of links.entries()) {
-    console.log("Downloading file ", i + 1);
-    if (i === 10) break;
-    results.push(await downloadEachFile(val));
+    results.push(await downloadEachFile(val, i));
   }
   return results;
 };
@@ -106,6 +109,7 @@ router.get("/download", async (req, res) => {
   const folderResult = await axios.get(ALL_FOLDER_URL);
   const folderWithFilesArr = await processAllFolder(folderResult.data);
 
+  // Gop lai tat ca cac link roi download
   // const arrayOfLink = folderWithFilesArr.reduce((accum, item) => {
   //   const fullUrls = item.fileNames.map((fileName) => ({
   //     link: `https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/61/MOD04_3K/2021/${item.folderName}/${fileName}`,
@@ -118,7 +122,6 @@ router.get("/download", async (req, res) => {
 
   // await downloadAllFiles(arrayOfLink);
 
-  // await downloadAllFiles(allLinkJson);
   res.send("ALL DONE");
 });
 
