@@ -2,7 +2,19 @@ const express = require("express");
 var cors = require("cors");
 const axios = require("axios");
 const fs = require("fs");
-const download = require("download");
+const axiosRetry = require("axios-retry");
+
+axiosRetry(axios, {
+  retries: 3, // number of retries
+  retryDelay: (retryCount) => {
+    console.log(`retry attempt: ${retryCount}`);
+    return retryCount * 2000; // time interval between retries
+  },
+  retryCondition: (error) => {
+    // if retry condition is not specified, by default idempotent requests are retried
+    return error.response.status === 503;
+  },
+});
 // const allLinkJson = require("../dist/allLink.json");
 const ProgressBar = require("progress");
 
@@ -57,6 +69,7 @@ const processAllFolder = async (folders) => {
 
 const downloadEachFile = async (downloadItem, index) => {
   console.log("Downloading file ", index + 1);
+
   let { data, headers } = await axios.get(downloadItem.link, {
     headers: {
       Authorization: `Bearer ${process.env.TOKEN}`,
