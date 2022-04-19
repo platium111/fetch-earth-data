@@ -24,27 +24,38 @@ require("dotenv").config();
 
 app.use(cors());
 
+// 1. Yeu cau lan 1
 // file | https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/61/MOD04_3K/2021/001/MOD04_3K.A2021001.0040.061.2021268052025.hdf
 // 001 | https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/61/MOD04_3K/2021/001.json
 // all 2021 | https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/61/MOD04_3K/2021.json
 
+// 2. Yeu cau lan 2: Loc file dua tren pattern
+// all 2021 | https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/VNP46A2/2021.json
+// 001 | https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/VNP46A2/2021/001.json
+
 const ALL_FOLDER_URL =
-  "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/61/MOD04_3K/2021.json";
+  "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/VNP46A2/2021.json";
+
+const CHILD_FOLDER_URL = "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/VNP46A2/2021"
+const FILTER_PATTERN = ['h20v03', 'h20v04', 'h21v03', 'h21v04'];
 
 const dowloadEachFolder = async (folder) => {
   const filesUrl = await axios.get(
-    `https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/61/MOD04_3K/2021/${folder.name}.json`
+    `${CHILD_FOLDER_URL}/${folder.name}.json`
   );
 
+  const numberOfDownload = FILTER_PATTERN.length > 0 ? filesUrl.data.map((item) => item.name).filter(name => FILTER_PATTERN.some(pattern => name.includes(pattern))).length : filesUrl.data.length;
   console.log(
-    `Downloaded each folder ${folder.name} with ${filesUrl.data.length} files \n`
+    `Downloaded each folder ${folder.name} with ${numberOfDownload} files \n`
   );
 
   fs.writeFileSync(`./dist/${folder.name}.json`, JSON.stringify(filesUrl.data));
   const transformFiles = filesUrl.data.map((item) => item.name);
-  const linkObj = { folderName: folder.name, fileNames: transformFiles };
+  const filterFiles = FILTER_PATTERN.length > 0 ? transformFiles.filter(name => FILTER_PATTERN.some(pattern => name.includes(pattern))) : transformFiles
+
+  const linkObj = { folderName: folder.name, fileNames: filterFiles };
   const fullUrls = linkObj.fileNames.map((fileName) => ({
-    link: `https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/61/MOD04_3K/2021/${linkObj.folderName}/${fileName}`,
+    link: `${CHILD_FOLDER_URL}/${linkObj.folderName}/${fileName}`,
     fileName,
     folderName: folder.name,
   }));
